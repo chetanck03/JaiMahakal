@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Briefcase } from 'lucide-react';
+import { LayoutDashboard, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -15,18 +15,18 @@ export function Sidebar() {
       icon: LayoutDashboard,
     },
     {
-      href: '/workspaces',
-      label: 'Workspaces',
-      icon: Briefcase,
+      href: '/profile',
+      label: 'Profile',
+      icon: User,
     },
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)]">
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)] hidden md:block">
       <nav className="p-4 space-y-2">
         {links.map((link) => {
           const Icon = link.icon;
-          const isActive = pathname === link.href;
+          const isActive = pathname === link.href || pathname.startsWith(link.href);
 
           return (
             <Link
