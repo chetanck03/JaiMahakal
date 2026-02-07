@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, CheckSquare, Target, MessageSquare, BarChart3, Sparkles, FileText } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Target, MessageSquare, BarChart3, Sparkles, FileText, MessageCircle, Users } from 'lucide-react';
 
 export function WorkspaceTabs({ workspaceId }: { workspaceId: string }) {
   const pathname = usePathname();
@@ -12,6 +12,8 @@ export function WorkspaceTabs({ workspaceId }: { workspaceId: string }) {
     { href: `/workspace/${workspaceId}`, label: 'Overview', icon: LayoutDashboard },
     { href: `/workspace/${workspaceId}/tasks`, label: 'Tasks', icon: CheckSquare },
     { href: `/workspace/${workspaceId}/milestones`, label: 'Milestones', icon: Target },
+    { href: `/workspace/${workspaceId}/team`, label: 'Team', icon: Users },
+    { href: `/workspace/${workspaceId}/chat`, label: 'Chat', icon: MessageCircle, badge: 'LIVE' },
     { href: `/workspace/${workspaceId}/feedback`, label: 'Feedback', icon: MessageSquare },
     { href: `/workspace/${workspaceId}/analytics`, label: 'Analytics', icon: BarChart3 },
     { href: `/workspace/${workspaceId}/insights`, label: 'AI Insights', icon: Sparkles, badge: 'NEW' },
@@ -39,7 +41,11 @@ export function WorkspaceTabs({ workspaceId }: { workspaceId: string }) {
               <Icon className="w-4 h-4" />
               {tab.label}
               {tab.badge && (
-                <span className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
+                <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                  tab.badge === 'LIVE' 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
                   {tab.badge}
                 </span>
               )}

@@ -2,6 +2,7 @@
 
 A unified digital platform for early-stage founders to manage execution, validate ideas, collaborate with teams, and gain actionable insights.
 
+npx prisma generate
 npx prisma db push
 
 ## 🚀 Features

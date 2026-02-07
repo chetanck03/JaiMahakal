@@ -22,6 +22,7 @@ model User {
   tasks      Task[]
   feedbacks  Feedback[]
   otpCodes   OTPCode[]
+  messages   Message[]
 }
 
 model OTPCode {
@@ -49,6 +50,26 @@ model Workspace {
   tasks      Task[]
   milestones Milestone[]
   feedbacks  FeedbackRequest[]
+  messages   Message[]
+  
+  @@index([createdAt])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model WorkspaceMember {
@@ -126,17 +147,21 @@ model FeedbackRequest {
 }
 
 model Feedback {
-  id          String   @id @default(cuid())
-  content     String
-  rating      Int?
-  isAddressed Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id            String   @id @default(cuid())
+  content       String
+  rating        Int?
+  isAddressed   Boolean  @default(false)
+  createdAt     DateTime @default(now())
   
-  requestId   String
-  request     FeedbackRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  // Submitter info (for anonymous/public feedback)
+  submitterName  String?
+  submitterEmail String?
   
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requestId     String
+  request       FeedbackRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   
   @@index([requestId])
   @@index([userId])

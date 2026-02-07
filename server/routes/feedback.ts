@@ -42,7 +42,7 @@ router.post('/request', authenticate, async (req: AuthRequest, res) => {
 router.post('/submit/:shareableLink', async (req, res) => {
   try {
     const { shareableLink } = req.params;
-    const { content, rating } = req.body;
+    const { content, rating, submitterName, submitterEmail } = req.body;
 
     if (!content) {
       return res.status(400).json({
@@ -52,6 +52,11 @@ router.post('/submit/:shareableLink', async (req, res) => {
 
     const feedbackRequest = await prisma.feedbackRequest.findUnique({
       where: { shareableLink },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+      },
     });
 
     if (!feedbackRequest) {
@@ -65,6 +70,8 @@ router.post('/submit/:shareableLink', async (req, res) => {
         requestId: feedbackRequest.id,
         content,
         rating: rating ? parseInt(rating) : null,
+        submitterName: submitterName || null,
+        submitterEmail: submitterEmail || null,
       },
     });
 
@@ -72,6 +79,34 @@ router.post('/submit/:shareableLink', async (req, res) => {
   } catch (error) {
     console.error('Submit feedback error:', error);
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to submit feedback' } });
+  }
+});
+
+// Get feedback request details (public - no auth)
+router.get('/request/:shareableLink', async (req, res) => {
+  try {
+    const { shareableLink } = req.params;
+
+    const feedbackRequest = await prisma.feedbackRequest.findUnique({
+      where: { shareableLink },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+
+    if (!feedbackRequest) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Feedback request not found' },
+      });
+    }
+
+    res.json(feedbackRequest);
+  } catch (error) {
+    console.error('Get feedback request error:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get feedback request' } });
   }
 });
 

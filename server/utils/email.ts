@@ -55,3 +55,63 @@ export async function sendOTPEmail(email: string, otp: string, name: string) {
 export function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+// Send workspace invitation email
+export async function sendInviteEmail(
+  email: string,
+  inviterName: string,
+  workspaceName: string,
+  inviteLink: string,
+  customMessage?: string
+) {
+  const mailOptions = {
+    from: process.env.SMTP_FROM || 'StartupOps <noreply@startupops.com>',
+    to: email,
+    subject: `${inviterName} invited you to join ${workspaceName} on StartupOps`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: white; padding: 40px; border: 1px solid #e5e7eb; border-top: none; }
+            .message-box { background: #f3f4f6; padding: 15px; border-left: 4px solid #3b82f6; margin: 20px 0; font-style: italic; }
+            .button { background: #3b82f6; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; margin: 20px 0; }
+            .footer { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">StartupOps</h1>
+            </div>
+            <div class="content">
+              <h2>You're Invited! 🎉</h2>
+              <p><strong>${inviterName}</strong> has invited you to join the <strong>${workspaceName}</strong> workspace on StartupOps.</p>
+              ${customMessage ? `<div class="message-box">"${customMessage}"</div>` : ''}
+              <p>StartupOps helps early-stage founders manage execution, validate ideas, and collaborate with their teams.</p>
+              <div style="text-align: center;">
+                <a href="${inviteLink}" class="button">Join Workspace</a>
+              </div>
+              <p style="color: #6b7280; font-size: 14px;">Or copy this link: <a href="${inviteLink}">${inviteLink}</a></p>
+              <p style="color: #6b7280; font-size: 14px;">This invitation expires in 7 days.</p>
+            </div>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} StartupOps. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Invitation email sent to:', email);
+  } catch (error) {
+    console.error('Error sending invitation email:', error);
+    console.warn('Email sending failed, but invite link is still valid');
+  }
+}

@@ -10,6 +10,8 @@ import taskRoutes from './routes/task';
 import milestoneRoutes from './routes/milestone';
 import feedbackRoutes from './routes/feedback';
 import analyticsRoutes from './routes/analytics';
+import workspaceMembersRoutes from './routes/workspace-members';
+import messagesRoutes from './routes/messages';
 
 dotenv.config();
 
@@ -21,6 +23,7 @@ const io = new Server(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
   },
 });
 
@@ -64,22 +67,54 @@ app.get('/api/health', async (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/workspaces', workspaceRoutes);
+app.use('/api/workspace-members', workspaceMembersRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/milestones', milestoneRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/messages', messagesRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
+  // Join workspace room
   socket.on('join-workspace', (workspaceId: string) => {
     socket.join(`workspace-${workspaceId}`);
     console.log(`Socket ${socket.id} joined workspace ${workspaceId}`);
+    
+    // Notify others that user joined
+    socket.to(`workspace-${workspaceId}`).emit('user-joined', {
+      socketId: socket.id,
+      timestamp: new Date().toISOString(),
+    });
   });
 
+  // Leave workspace room
   socket.on('leave-workspace', (workspaceId: string) => {
     socket.leave(`workspace-${workspaceId}`);
+    console.log(`Socket ${socket.id} left workspace ${workspaceId}`);
+    
+    // Notify others that user left
+    socket.to(`workspace-${workspaceId}`).emit('user-left', {
+      socketId: socket.id,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  // Typing indicator
+  socket.on('typing-start', ({ workspaceId, userName }) => {
+    socket.to(`workspace-${workspaceId}`).emit('user-typing', {
+      userName,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  socket.on('typing-stop', ({ workspaceId, userName }) => {
+    socket.to(`workspace-${workspaceId}`).emit('user-stopped-typing', {
+      userName,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   socket.on('disconnect', () => {
@@ -105,6 +140,7 @@ async function startServer() {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`📊 API available at http://localhost:${PORT}/api`);
     console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`💬 WebSocket ready for real-time chat`);
   });
 }
 

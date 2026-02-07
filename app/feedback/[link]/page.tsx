@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -13,8 +13,27 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [content, setContent] = useState('');
+  const [submitterName, setSubmitterName] = useState('');
+  const [submitterEmail, setSubmitterEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [feedbackRequest, setFeedbackRequest] = useState<any>(null);
+  const [loadingRequest, setLoadingRequest] = useState(true);
+
+  useEffect(() => {
+    const fetchFeedbackRequest = async () => {
+      try {
+        const response = await feedbackAPI.getFeedbackRequest(link);
+        setFeedbackRequest(response.data);
+      } catch (error) {
+        console.error('Failed to load feedback request:', error);
+      } finally {
+        setLoadingRequest(false);
+      }
+    };
+
+    fetchFeedbackRequest();
+  }, [link]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +44,8 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
       await feedbackAPI.submitFeedback(link, {
         content,
         rating: rating || undefined,
+        submitterName: submitterName || undefined,
+        submitterEmail: submitterEmail || undefined,
       });
       setSubmitted(true);
     } catch (error) {
@@ -34,6 +55,25 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
       setLoading(false);
     }
   };
+
+  if (loadingRequest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!feedbackRequest) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Not Found</h1>
+          <p className="text-gray-600">This feedback request does not exist or has been removed.</p>
+        </Card>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -57,12 +97,32 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
             <MessageSquare className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Share Your Feedback</h1>
-            <p className="text-gray-600">Help us improve by sharing your thoughts</p>
+            <h1 className="text-2xl font-bold text-gray-900">{feedbackRequest.title}</h1>
+            {feedbackRequest.description && (
+              <p className="text-gray-600 mt-1">{feedbackRequest.description}</p>
+            )}
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* User Info */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Input
+              label="Your Name (Optional)"
+              value={submitterName}
+              onChange={(e) => setSubmitterName(e.target.value)}
+              placeholder="John Doe"
+            />
+            <Input
+              label="Your Email (Optional)"
+              type="email"
+              value={submitterEmail}
+              onChange={(e) => setSubmitterEmail(e.target.value)}
+              placeholder="john@example.com"
+            />
+          </div>
+
+          {/* Rating */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Rate Your Experience (Optional)
@@ -89,6 +149,7 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
             </div>
           </div>
 
+          {/* Feedback Content */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Your Feedback *

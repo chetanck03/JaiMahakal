@@ -25,6 +25,8 @@ interface Feedback {
   rating?: number;
   isAddressed: boolean;
   createdAt: string;
+  submitterName?: string;
+  submitterEmail?: string;
   user?: {
     name: string;
   };
@@ -220,6 +222,9 @@ export function FeedbackDashboard({ workspaceId }: { workspaceId: string }) {
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             {feedback.rating && renderStars(feedback.rating)}
+                            {feedback.submitterName && (
+                              <span className="text-xs text-gray-600">by {feedback.submitterName}</span>
+                            )}
                             {feedback.user && (
                               <span className="text-xs text-gray-600">by {feedback.user.name}</span>
                             )}
@@ -228,6 +233,13 @@ export function FeedbackDashboard({ workspaceId }: { workspaceId: string }) {
                             {format(new Date(feedback.createdAt), 'MMM dd')}
                           </span>
                         </div>
+                        
+                        {feedback.submitterEmail && (
+                          <p className="text-xs text-gray-500 mb-2">
+                            Mail: {feedback.submitterEmail}
+                          </p>
+                        )}
+                        
                         <p className="text-sm text-gray-700 mb-2">{feedback.content}</p>
                         {!feedback.isAddressed && (
                           <Button

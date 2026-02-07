@@ -66,6 +66,8 @@ export const feedbackAPI = {
   createRequest: (data: any) => api.post('/feedback/request', data),
   submitFeedback: (shareableLink: string, data: any) =>
     api.post(`/feedback/submit/${shareableLink}`, data),
+  getFeedbackRequest: (shareableLink: string) =>
+    api.get(`/feedback/request/${shareableLink}`),
   getByWorkspace: (workspaceId: string) =>
     api.get(`/feedback/workspace/${workspaceId}`),
   markAddressed: (id: string) => api.put(`/feedback/${id}/address`),
@@ -75,4 +77,18 @@ export const feedbackAPI = {
 export const analyticsAPI = {
   getWorkspaceAnalytics: (workspaceId: string) =>
     api.get(`/analytics/workspace/${workspaceId}`),
+};
+
+// Workspace Members API
+export const workspaceMembersAPI = {
+  getMembers: (workspaceId: string) =>
+    api.get(`/workspace-members/${workspaceId}/members`),
+  generateInvite: (workspaceId: string) =>
+    api.post(`/workspace-members/${workspaceId}/invite`),
+  joinWorkspace: (inviteToken: string, workspaceId: string) =>
+    api.post(`/workspace-members/join/${inviteToken}`, { workspaceId }),
+  removeMember: (workspaceId: string, memberId: string) =>
+    api.delete(`/workspace-members/${workspaceId}/members/${memberId}`),
+  updateRole: (workspaceId: string, memberId: string, role: string) =>
+    api.put(`/workspace-members/${workspaceId}/members/${memberId}/role`, { role }),
 };
