@@ -25,6 +25,13 @@ export const authAPI = {
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  // Google OAuth
+  googleAuth: (token: string) => api.post('/auth/google', { token }),
+  // OTP
+  sendOTP: (data: { email: string; name?: string }) =>
+    api.post('/auth/otp/send', data),
+  verifyOTP: (data: { email: string; code: string }) =>
+    api.post('/auth/otp/verify', data),
 };
 
 // Workspace API

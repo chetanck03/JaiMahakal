@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { verifyGoogleToken, getGoogleAuthURL } from '../utils/google-oauth';
+import { sendOTPEmail, generateOTP } from '../utils/email';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -183,3 +185,259 @@ router.get('/me', authenticate, async (req: AuthRequest, res) => {
 });
 
 export default router;
+
+// ============================================
+// GOOGLE OAUTH ROUTES
+// ============================================
+
+// Google OAuth - Get Auth URL
+router.get('/google/url', (req, res) => {
+  try {
+    const url = getGoogleAuthURL();
+    res.json({ url });
+  } catch (error) {
+    console.error('Google auth URL error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to generate Google auth URL',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
+
+// Google OAuth - Sign in with Google Token
+router.post('/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Google token is required',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Verify Google token
+    const googleUser = await verifyGoogleToken(token);
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+
+    if (!user) {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: googleUser.name,
+          googleId: googleUser.googleId,
+          authProvider: 'google',
+          isVerified: true,
+        },
+      });
+    } else if (!user.googleId) {
+      // Link Google account to existing user
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: googleUser.googleId,
+          isVerified: true,
+        },
+      });
+    }
+
+    // Generate JWT
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET!,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      },
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to authenticate with Google',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
+
+// ============================================
+// OTP (EMAIL) ROUTES
+// ============================================
+
+// Send OTP to email
+router.post('/otp/send', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Email is required',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Check if user exists, if not create a temporary record
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      // Create user without password (will be OTP-only user)
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split('@')[0],
+          authProvider: 'email',
+          isVerified: false,
+        },
+      });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP to database
+    await prisma.oTPCode.create({
+      data: {
+        code: otp,
+        expiresAt,
+        userId: user.id,
+      },
+    });
+
+    // Send OTP email
+    await sendOTPEmail(email, otp, user.name);
+
+    res.json({
+      message: 'OTP sent successfully',
+      email,
+      expiresIn: 600, // seconds
+    });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to send OTP',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
+
+// Verify OTP and login
+router.post('/otp/verify', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Email and OTP code are required',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User not found',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Find valid OTP
+    const otpRecord = await prisma.oTPCode.findFirst({
+      where: {
+        userId: user.id,
+        code,
+        used: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!otpRecord) {
+      return res.status(401).json({
+        error: {
+          code: 'INVALID_OTP',
+          message: 'Invalid or expired OTP code',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
+    // Mark OTP as used
+    await prisma.oTPCode.update({
+      where: { id: otpRecord.id },
+      data: { used: true },
+    });
+
+    // Mark user as verified
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isVerified: true },
+    });
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET!,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+      },
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to verify OTP',
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+});
