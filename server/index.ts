@@ -12,6 +12,7 @@ import feedbackRoutes from './routes/feedback';
 import analyticsRoutes from './routes/analytics';
 import workspaceMembersRoutes from './routes/workspace-members';
 import messagesRoutes from './routes/messages';
+import channelsRoutes from './routes/channels';
 
 dotenv.config();
 
@@ -73,45 +74,44 @@ app.use('/api/milestones', milestoneRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/channels', channelsRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  // Join workspace room
-  socket.on('join-workspace', (workspaceId: string) => {
-    socket.join(`workspace-${workspaceId}`);
-    console.log(`Socket ${socket.id} joined workspace ${workspaceId}`);
+  // Join channel room
+  socket.on('join-channel', (channelId: string) => {
+    socket.join(`channel-${channelId}`);
+    console.log(`Socket ${socket.id} joined channel ${channelId}`);
     
-    // Notify others that user joined
-    socket.to(`workspace-${workspaceId}`).emit('user-joined', {
+    socket.to(`channel-${channelId}`).emit('user-joined', {
       socketId: socket.id,
       timestamp: new Date().toISOString(),
     });
   });
 
-  // Leave workspace room
-  socket.on('leave-workspace', (workspaceId: string) => {
-    socket.leave(`workspace-${workspaceId}`);
-    console.log(`Socket ${socket.id} left workspace ${workspaceId}`);
+  // Leave channel room
+  socket.on('leave-channel', (channelId: string) => {
+    socket.leave(`channel-${channelId}`);
+    console.log(`Socket ${socket.id} left channel ${channelId}`);
     
-    // Notify others that user left
-    socket.to(`workspace-${workspaceId}`).emit('user-left', {
+    socket.to(`channel-${channelId}`).emit('user-left', {
       socketId: socket.id,
       timestamp: new Date().toISOString(),
     });
   });
 
   // Typing indicator
-  socket.on('typing-start', ({ workspaceId, userName }) => {
-    socket.to(`workspace-${workspaceId}`).emit('user-typing', {
+  socket.on('typing-start', ({ channelId, userName }) => {
+    socket.to(`channel-${channelId}`).emit('user-typing', {
       userName,
       timestamp: new Date().toISOString(),
     });
   });
 
-  socket.on('typing-stop', ({ workspaceId, userName }) => {
-    socket.to(`workspace-${workspaceId}`).emit('user-stopped-typing', {
+  socket.on('typing-stop', ({ channelId, userName }) => {
+    socket.to(`channel-${channelId}`).emit('user-stopped-typing', {
       userName,
       timestamp: new Date().toISOString(),
     });

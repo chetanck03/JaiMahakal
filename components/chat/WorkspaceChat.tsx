@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores/authStore';
 import { io, Socket } from 'socket.io-client';
 import { format } from 'date-fns';
+import { ChannelMembers } from './ChannelMembers';
 
 interface Message {
   id: string;
@@ -22,7 +23,25 @@ interface Message {
   };
 }
 
-export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
+interface Member {
+  userId: string;
+  joinedAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+interface WorkspaceChatProps {
+  workspaceId: string;
+  channelId?: string;
+  channelName?: string;
+  channelType?: 'public' | 'private' | 'dm';
+  channelMembers?: Member[];
+}
+
+export function WorkspaceChat({ workspaceId, channelId, channelName, channelType, channelMembers }: WorkspaceChatProps) {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [message, setMessage] = useState('');
@@ -35,48 +54,128 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
 
   // Fetch messages
   const { data: messages = [], isLoading } = useQuery({
-    queryKey: ['messages', workspaceId],
+    queryKey: ['messages', workspaceId, channelId],
     queryFn: async () => {
-      const response = await api.get(`/messages/workspace/${workspaceId}`);
+      const params = channelId ? { channelId } : {};
+      const response = await api.get(`/messages/workspace/${workspaceId}`, { params });
       return response.data;
     },
+    enabled: !!channelId,
   });
 
-  // Send message mutation
+  // Send message mutation with optimistic update
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      return await api.post('/messages', { workspaceId, content });
+      return await api.post('/messages', { workspaceId, channelId, content });
     },
-    onSuccess: () => {
+    onMutate: async (content: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['messages', workspaceId, channelId] });
+
+      // Snapshot previous value
+      const previousMessages = queryClient.getQueryData(['messages', workspaceId, channelId]);
+
+      // Optimistically update with temporary message
+      const tempMessage: Message = {
+        id: `temp-${Date.now()}`,
+        content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        user: {
+          id: user?.id || '',
+          name: user?.name || '',
+          email: user?.email || '',
+        },
+      };
+
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
+        return [...old, tempMessage];
+      });
+
+      // Clear input immediately
       setMessage('');
-      queryClient.invalidateQueries({ queryKey: ['messages', workspaceId] });
+
+      return { previousMessages, tempMessage };
+    },
+    onError: (err, content, context) => {
+      // Rollback on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', workspaceId, channelId], context.previousMessages);
+      }
+      // Restore message in input
+      setMessage(content);
+    },
+    onSuccess: (response, content, context) => {
+      // Replace temp message with real message from server
+      const realMessage = response.data;
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
+        return old.map((msg) => 
+          msg.id === context?.tempMessage?.id ? realMessage : msg
+        );
+      });
     },
   });
 
-  // Delete message mutation
+  // Delete message mutation with optimistic update
   const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: string) => {
       return await api.delete(`/messages/${messageId}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', workspaceId] });
+    onMutate: async (messageId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', workspaceId, channelId] });
+      const previousMessages = queryClient.getQueryData(['messages', workspaceId, channelId]);
+
+      // Optimistically remove message
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
+        return old.filter((msg) => msg.id !== messageId);
+      });
+
+      return { previousMessages };
+    },
+    onError: (err, messageId, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', workspaceId, channelId], context.previousMessages);
+      }
     },
   });
 
-  // Update message mutation
+  // Update message mutation with optimistic update
   const updateMessageMutation = useMutation({
     mutationFn: async ({ id, content }: { id: string; content: string }) => {
       return await api.put(`/messages/${id}`, { content });
     },
-    onSuccess: () => {
+    onMutate: async ({ id, content }) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', workspaceId, channelId] });
+      const previousMessages = queryClient.getQueryData(['messages', workspaceId, channelId]);
+
+      // Optimistically update message
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
+        return old.map((msg) =>
+          msg.id === id
+            ? { ...msg, content, updatedAt: new Date().toISOString() }
+            : msg
+        );
+      });
+
       setEditingId(null);
       setEditContent('');
-      queryClient.invalidateQueries({ queryKey: ['messages', workspaceId] });
+
+      return { previousMessages };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', workspaceId, channelId], context.previousMessages);
+      }
+      // Restore editing state
+      setEditingId(variables.id);
+      setEditContent(variables.content);
     },
   });
 
   // Setup WebSocket
   useEffect(() => {
+    if (!channelId) return;
+
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
     const newSocket = io(socketUrl, {
       transports: ['websocket'],
@@ -84,23 +183,48 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
 
     newSocket.on('connect', () => {
       console.log('Connected to WebSocket');
-      newSocket.emit('join-workspace', workspaceId);
+      newSocket.emit('join-channel', channelId);
     });
 
     newSocket.on('new-message', (newMessage: Message) => {
-      queryClient.setQueryData(['messages', workspaceId], (old: Message[] = []) => {
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
+        // Don't add if it's from current user (already added optimistically)
+        if (newMessage.user.id === user?.id) {
+          // Replace temp message with real one if exists
+          const hasTempMessage = old.some((msg) => msg.id.startsWith('temp-'));
+          if (hasTempMessage) {
+            return old.map((msg) => 
+              msg.id.startsWith('temp-') && msg.content === newMessage.content
+                ? newMessage
+                : msg
+            );
+          }
+          // Check if real message already exists
+          const exists = old.some((msg) => msg.id === newMessage.id);
+          if (exists) {
+            return old;
+          }
+        }
+        
+        // Check if message already exists (avoid duplicates)
+        const exists = old.some((msg) => msg.id === newMessage.id);
+        if (exists) {
+          return old;
+        }
+        
+        // Add new message from other users
         return [...old, newMessage];
       });
     });
 
     newSocket.on('message-deleted', ({ id }: { id: string }) => {
-      queryClient.setQueryData(['messages', workspaceId], (old: Message[] = []) => {
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
         return old.filter((msg) => msg.id !== id);
       });
     });
 
     newSocket.on('message-updated', (updatedMessage: Message) => {
-      queryClient.setQueryData(['messages', workspaceId], (old: Message[] = []) => {
+      queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
         return old.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg));
       });
     });
@@ -116,10 +240,10 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
     setSocket(newSocket);
 
     return () => {
-      newSocket.emit('leave-workspace', workspaceId);
+      newSocket.emit('leave-channel', channelId);
       newSocket.disconnect();
     };
-  }, [workspaceId, queryClient]);
+  }, [workspaceId, channelId, queryClient]);
 
   // Scroll to bottom
   useEffect(() => {
@@ -127,10 +251,11 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
   }, [messages]);
 
   const handleSend = () => {
-    if (message.trim()) {
-      sendMessageMutation.mutate(message);
+    if (message.trim() && channelId) {
+      const messageToSend = message;
+      sendMessageMutation.mutate(messageToSend);
       if (socket) {
-        socket.emit('typing-stop', { workspaceId, userName: user?.name });
+        socket.emit('typing-stop', { channelId, userName: user?.name });
       }
     }
   };
@@ -138,15 +263,15 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
   const handleTyping = (value: string) => {
     setMessage(value);
 
-    if (socket && user) {
-      socket.emit('typing-start', { workspaceId, userName: user.name });
+    if (socket && user && channelId) {
+      socket.emit('typing-start', { channelId, userName: user.name });
 
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
       typingTimeoutRef.current = setTimeout(() => {
-        socket.emit('typing-stop', { workspaceId, userName: user.name });
+        socket.emit('typing-stop', { channelId, userName: user.name });
       }, 1000);
     }
   };
@@ -162,6 +287,16 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
     }
   };
 
+  if (!channelId) {
+    return (
+      <Card>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-gray-600">Select a channel to start chatting</div>
+        </div>
+      </Card>
+    );
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -174,6 +309,27 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
 
   return (
     <Card className="flex flex-col h-[600px]">
+      {/* Channel Header */}
+      {channelName && (
+        <div className="px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {channelType === 'dm' ? (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
+                  {channelName.charAt(0).toUpperCase()}
+                </div>
+              ) : (
+                <span className="text-gray-600">#</span>
+              )}
+              <h3 className="font-semibold text-gray-900">{channelName}</h3>
+            </div>
+            {channelMembers && channelMembers.length > 0 && channelType !== 'dm' && (
+              <ChannelMembers members={channelMembers} channelName={channelName} />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
@@ -279,7 +435,6 @@ export function WorkspaceChat({ workspaceId }: { workspaceId: string }) {
           />
           <Button
             onClick={handleSend}
-            loading={sendMessageMutation.isPending}
             disabled={!message.trim()}
           >
             <Send className="w-4 h-4" />

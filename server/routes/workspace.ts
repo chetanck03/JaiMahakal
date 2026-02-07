@@ -46,6 +46,21 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       },
     });
 
+    // Create default #general channel
+    await (prisma as any).channel.create({
+      data: {
+        workspaceId: workspace.id,
+        name: 'general',
+        description: 'General discussion for the team',
+        type: 'public',
+        members: {
+          create: {
+            userId: req.userId!,
+          },
+        },
+      },
+    });
+
     res.status(201).json(workspace);
   } catch (error) {
     console.error('Create workspace error:', error);

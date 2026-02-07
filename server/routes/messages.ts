@@ -8,31 +8,50 @@ const prisma = new PrismaClient();
 // Send message
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { workspaceId, content } = req.body;
+    const { workspaceId, channelId, content } = req.body;
 
-    if (!workspaceId || !content) {
+    if (!content) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Workspace ID and content are required' },
+        error: { code: 'VALIDATION_ERROR', message: 'Content is required' },
       });
     }
 
-    // Check if user is member of workspace
-    const member = await prisma.workspaceMember.findFirst({
-      where: {
-        workspaceId,
-        userId: req.userId,
-      },
-    });
-
-    if (!member) {
-      return res.status(403).json({
-        error: { code: 'FORBIDDEN', message: 'You are not a member of this workspace' },
+    // If channelId provided, check if user is member of channel
+    if (channelId) {
+      const channelMember = await prisma.channelMember.findUnique({
+        where: {
+          userId_channelId: {
+            userId: req.userId!,
+            channelId,
+          },
+        },
       });
+
+      if (!channelMember) {
+        return res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'You are not a member of this channel' },
+        });
+      }
+    } else if (workspaceId) {
+      // Check if user is member of workspace
+      const member = await prisma.workspaceMember.findFirst({
+        where: {
+          workspaceId,
+          userId: req.userId,
+        },
+      });
+
+      if (!member) {
+        return res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'You are not a member of this workspace' },
+        });
+      }
     }
 
     const message = await prisma.message.create({
       data: {
-        workspaceId,
+        workspaceId: workspaceId!,
+        channelId: channelId || null,
         userId: req.userId!,
         content,
       },
@@ -49,7 +68,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 
     // Emit socket event
     const io = req.app.get('io');
-    io.to(`workspace-${workspaceId}`).emit('new-message', message);
+    const room = channelId ? `channel-${channelId}` : `workspace-${workspaceId}`;
+    io.to(room).emit('new-message', message);
 
     res.status(201).json(message);
   } catch (error) {
@@ -58,11 +78,11 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-// Get messages for workspace
+// Get messages for workspace or channel
 router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res) => {
   try {
     const { workspaceId } = req.params;
-    const { limit = '50', before } = req.query;
+    const { limit = '50', before, channelId } = req.query;
 
     // Check if user is member
     const member = await prisma.workspaceMember.findFirst({
@@ -79,6 +99,30 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
     }
 
     const where: any = { workspaceId };
+    
+    if (channelId) {
+      where.channelId = channelId as string;
+      
+      // Check if user is member of channel
+      const channelMember = await prisma.channelMember.findUnique({
+        where: {
+          userId_channelId: {
+            userId: req.userId!,
+            channelId: channelId as string,
+          },
+        },
+      });
+
+      if (!channelMember) {
+        return res.status(403).json({
+          error: { code: 'FORBIDDEN', message: 'You are not a member of this channel' },
+        });
+      }
+    } else {
+      // Get messages without channel (general workspace messages)
+      where.channelId = null;
+    }
+    
     if (before) {
       where.createdAt = { lt: new Date(before as string) };
     }
@@ -131,7 +175,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
 
     // Emit socket event
     const io = req.app.get('io');
-    io.to(`workspace-${message.workspaceId}`).emit('message-deleted', { id });
+    const room = message.channelId ? `channel-${message.channelId}` : `workspace-${message.workspaceId}`;
+    io.to(room).emit('message-deleted', { id });
 
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
@@ -185,7 +230,8 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
 
     // Emit socket event
     const io = req.app.get('io');
-    io.to(`workspace-${message.workspaceId}`).emit('message-updated', updatedMessage);
+    const room = message.channelId ? `channel-${message.channelId}` : `workspace-${message.workspaceId}`;
+    io.to(room).emit('message-updated', updatedMessage);
 
     res.json(updatedMessage);
   } catch (error) {

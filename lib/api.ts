@@ -92,3 +92,14 @@ export const workspaceMembersAPI = {
   updateRole: (workspaceId: string, memberId: string, role: string) =>
     api.put(`/workspace-members/${workspaceId}/members/${memberId}/role`, { role }),
 };
+
+// Channels API
+export const channelsAPI = {
+  create: (data: any) => api.post('/channels', data),
+  getByWorkspace: (workspaceId: string) => api.get(`/channels/workspace/${workspaceId}`),
+  join: (channelId: string) => api.post(`/channels/${channelId}/join`),
+  leave: (channelId: string) => api.post(`/channels/${channelId}/leave`),
+  delete: (channelId: string) => api.delete(`/channels/${channelId}`),
+  addMember: (channelId: string, userId: string) => 
+    api.post(`/channels/${channelId}/members`, { userId }),
+};

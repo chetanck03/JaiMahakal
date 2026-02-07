@@ -23,6 +23,7 @@ model User {
   feedbacks  Feedback[]
   otpCodes   OTPCode[]
   messages   Message[]
+  channelMemberships ChannelMember[]
 }
 
 model OTPCode {
@@ -51,8 +52,42 @@ model Workspace {
   milestones Milestone[]
   feedbacks  FeedbackRequest[]
   messages   Message[]
+  channels   Channel[]
   
   @@index([createdAt])
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String   @default("public") // public, private, dm
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  messages    Message[]
+  members     ChannelMember[]
+  
+  @@index([workspaceId])
+  @@index([type])
+}
+
+model ChannelMember {
+  id        String   @id @default(cuid())
+  joinedAt  DateTime @default(now())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, channelId])
+  @@index([channelId])
+  @@index([userId])
 }
 
 model Message {
@@ -67,8 +102,12 @@ model Message {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
+  channelId   String?
+  channel     Channel?  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
   @@index([workspaceId])
   @@index([userId])
+  @@index([channelId])
   @@index([createdAt])
 }
 
