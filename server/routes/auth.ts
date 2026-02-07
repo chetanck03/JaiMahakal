@@ -107,6 +107,16 @@ router.post('/login', async (req, res) => {
     }
 
     // Verify password
+    if (!user.password) {
+      return res.status(401).json({
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'This account uses a different login method',
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
+
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({

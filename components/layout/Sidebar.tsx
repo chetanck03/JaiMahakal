@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User } from 'lucide-react';
+import { LayoutDashboard, User, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
@@ -18,6 +18,12 @@ export function Sidebar() {
       href: '/profile',
       label: 'Profile',
       icon: User,
+    },
+    {
+      href: '/pricing',
+      label: 'Pricing',
+      icon: DollarSign,
+      badge: 'PRO',
     },
   ];
 
@@ -41,6 +47,11 @@ export function Sidebar() {
             >
               <Icon className="w-5 h-5" />
               {link.label}
+              {link.badge && (
+                <span className="ml-auto text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                  {link.badge}
+                </span>
+              )}
             </Link>
           );
         })}

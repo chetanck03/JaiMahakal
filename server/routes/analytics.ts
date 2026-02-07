@@ -17,9 +17,9 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
     });
 
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.status === 'COMPLETED').length;
+    const completedTasks = tasks.filter((t) => t.status === 'done').length;
     const overdueTasks = tasks.filter(
-      (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'COMPLETED'
+      (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done'
     ).length;
 
     const tasksByStatus = tasks.reduce((acc, task) => {
@@ -33,9 +33,9 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
     });
 
     const totalMilestones = milestones.length;
-    const achievedMilestones = milestones.filter((m) => m.isAchieved).length;
+    const achievedMilestones = milestones.filter((m) => m.status === 'completed').length;
     const overdueMilestones = milestones.filter(
-      (m) => new Date(m.targetDate) < new Date() && !m.isAchieved
+      (m) => new Date(m.targetDate) < new Date() && m.status !== 'completed'
     ).length;
 
     // Team metrics
@@ -49,9 +49,9 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
             tasksInProgress: 0,
           };
         }
-        if (task.status === 'COMPLETED') {
+        if (task.status === 'done') {
           acc[task.assigneeId!].tasksCompleted++;
-        } else if (task.status === 'IN_PROGRESS') {
+        } else if (task.status === 'in-progress') {
           acc[task.assigneeId!].tasksInProgress++;
         }
       }

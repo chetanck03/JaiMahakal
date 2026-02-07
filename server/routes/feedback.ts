@@ -16,8 +16,19 @@ router.post('/request', authenticate, async (req: AuthRequest, res) => {
       });
     }
 
+    // Generate unique shareable link (more readable than cuid)
+    const shareableLink = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
     const feedbackRequest = await prisma.feedbackRequest.create({
-      data: { workspaceId, title, description },
+      data: { 
+        workspaceId, 
+        title, 
+        description,
+        shareableLink,
+      },
+      include: {
+        feedbacks: true,
+      },
     });
 
     res.status(201).json(feedbackRequest);
@@ -31,7 +42,7 @@ router.post('/request', authenticate, async (req: AuthRequest, res) => {
 router.post('/submit/:shareableLink', async (req, res) => {
   try {
     const { shareableLink } = req.params;
-    const { content, rating, category } = req.body;
+    const { content, rating } = req.body;
 
     if (!content) {
       return res.status(400).json({
@@ -43,18 +54,17 @@ router.post('/submit/:shareableLink', async (req, res) => {
       where: { shareableLink },
     });
 
-    if (!feedbackRequest || !feedbackRequest.isActive) {
+    if (!feedbackRequest) {
       return res.status(404).json({
-        error: { code: 'NOT_FOUND', message: 'Feedback request not found or inactive' },
+        error: { code: 'NOT_FOUND', message: 'Feedback request not found' },
       });
     }
 
     const feedback = await prisma.feedback.create({
       data: {
-        feedbackRequestId: feedbackRequest.id,
+        requestId: feedbackRequest.id,
         content,
-        rating,
-        category,
+        rating: rating ? parseInt(rating) : null,
       },
     });
 
@@ -73,8 +83,13 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
     const feedbackRequests = await prisma.feedbackRequest.findMany({
       where: { workspaceId },
       include: {
-        feedback: {
-          orderBy: { submittedAt: 'desc' },
+        feedbacks: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -96,7 +111,6 @@ router.put('/:id/address', authenticate, async (req: AuthRequest, res) => {
       where: { id },
       data: {
         isAddressed: true,
-        addressedAt: new Date(),
       },
     });
 

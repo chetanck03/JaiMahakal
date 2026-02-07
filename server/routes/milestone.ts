@@ -8,18 +8,18 @@ const prisma = new PrismaClient();
 // Create milestone
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { workspaceId, name, description, targetDate } = req.body;
+    const { workspaceId, title, description, targetDate } = req.body;
 
-    if (!workspaceId || !name || !targetDate) {
+    if (!workspaceId || !title || !targetDate) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Workspace ID, name, and target date are required' },
+        error: { code: 'VALIDATION_ERROR', message: 'Workspace ID, title, and target date are required' },
       });
     }
 
     const milestone = await prisma.milestone.create({
       data: {
         workspaceId,
-        name,
+        title,
         description,
         targetDate: new Date(targetDate),
       },
@@ -63,16 +63,13 @@ router.get('/workspace/:workspaceId', authenticate, async (req: AuthRequest, res
 router.put('/:id', authenticate, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { name, description, targetDate, isAchieved } = req.body;
+    const { title, description, targetDate, status } = req.body;
 
     const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
+    if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (targetDate !== undefined) updateData.targetDate = new Date(targetDate);
-    if (isAchieved !== undefined) {
-      updateData.isAchieved = isAchieved;
-      if (isAchieved) updateData.achievedAt = new Date();
-    }
+    if (status !== undefined) updateData.status = status;
 
     const milestone = await prisma.milestone.update({
       where: { id },

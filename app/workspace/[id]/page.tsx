@@ -1,5 +1,6 @@
 import { WorkspaceOverview } from '@/components/workspace/WorkspaceOverview';
 
-export default function WorkspacePage({ params }: { params: { id: string } }) {
-  return <WorkspaceOverview workspaceId={params.id} />;
+export default async function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <WorkspaceOverview workspaceId={id} />;
 }

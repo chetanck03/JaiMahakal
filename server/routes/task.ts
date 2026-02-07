@@ -24,8 +24,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         assigneeId,
         milestoneId,
         dueDate: dueDate ? new Date(dueDate) : null,
-        priority: priority || 0,
-        status: status || 'NOT_STARTED',
+        priority: priority || 'medium',
+        status: status || 'todo',
       },
       include: {
         assignee: { select: { id: true, name: true, email: true } },
@@ -80,10 +80,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res) => {
     if (milestoneId !== undefined) updateData.milestoneId = milestoneId;
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
     if (priority !== undefined) updateData.priority = priority;
-    if (status !== undefined) {
-      updateData.status = status;
-      if (status === 'COMPLETED') updateData.completedAt = new Date();
-    }
+    if (status !== undefined) updateData.status = status;
 
     const task = await prisma.task.update({
       where: { id },
