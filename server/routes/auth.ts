@@ -2,9 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { verifyGoogleToken, getGoogleAuthURL } from '../utils/google-oauth';
-import { sendOTPEmail, generateOTP } from '../utils/email';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { verifyGoogleToken, getGoogleAuthURL } from '../utils/google-oauth.js';
+import { sendOTPEmail, generateOTP } from '../utils/email.js';
 
 const router = Router();
 const prisma = new PrismaClient();

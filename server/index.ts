@@ -4,16 +4,16 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
-import authRoutes from './routes/auth';
-import workspaceRoutes from './routes/workspace';
-import taskRoutes from './routes/task';
-import milestoneRoutes from './routes/milestone';
-import feedbackRoutes from './routes/feedback';
-import analyticsRoutes from './routes/analytics';
-import workspaceMembersRoutes from './routes/workspace-members';
-import messagesRoutes from './routes/messages';
-import channelsRoutes from './routes/channels';
-import uploadRoutes from './routes/upload';
+import authRoutes from './routes/auth.js';
+import workspaceRoutes from './routes/workspace.js';
+import taskRoutes from './routes/task.js';
+import milestoneRoutes from './routes/milestone.js';
+import feedbackRoutes from './routes/feedback.js';
+import analyticsRoutes from './routes/analytics.js';
+import workspaceMembersRoutes from './routes/workspace-members.js';
+import messagesRoutes from './routes/messages.js';
+import channelsRoutes from './routes/channels.js';
+import uploadRoutes from './routes/upload.js';
 
 dotenv.config();
 
