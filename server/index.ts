@@ -13,6 +13,7 @@ import analyticsRoutes from './routes/analytics';
 import workspaceMembersRoutes from './routes/workspace-members';
 import messagesRoutes from './routes/messages';
 import channelsRoutes from './routes/channels';
+import uploadRoutes from './routes/upload';
 
 dotenv.config();
 
@@ -75,6 +76,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/channels', channelsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {

@@ -8,11 +8,11 @@ const prisma = new PrismaClient();
 // Send message
 router.post('/', authenticate, async (req: AuthRequest, res) => {
   try {
-    const { workspaceId, channelId, content } = req.body;
+    const { workspaceId, channelId, content, attachments } = req.body;
 
-    if (!content) {
+    if (!content && (!attachments || attachments.length === 0)) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Content is required' },
+        error: { code: 'VALIDATION_ERROR', message: 'Content or attachments are required' },
       });
     }
 
@@ -53,7 +53,8 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
         workspaceId: workspaceId!,
         channelId: channelId || null,
         userId: req.userId!,
-        content,
+        content: content || '',
+        attachments: attachments || null,
       },
       include: {
         user: {

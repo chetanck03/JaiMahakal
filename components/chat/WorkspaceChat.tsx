@@ -10,10 +10,26 @@ import { useAuthStore } from '@/lib/stores/authStore';
 import { io, Socket } from 'socket.io-client';
 import { format } from 'date-fns';
 import { ChannelMembers } from './ChannelMembers';
+import { FileUpload } from './FileUpload';
+import { MessageAttachments } from './MessageAttachments';
+
+interface FileAttachment {
+  url: string;
+  publicId: string;
+  resourceType: string;
+  format: string;
+  size: number;
+  fileName: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+}
 
 interface Message {
   id: string;
   content: string;
+  attachments?: FileAttachment[];
   createdAt: string;
   updatedAt: string;
   user: {
@@ -45,6 +61,7 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [message, setMessage] = useState('');
+  const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -65,10 +82,15 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
 
   // Send message mutation with optimistic update
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      return await api.post('/messages', { workspaceId, channelId, content });
+    mutationFn: async ({ content, attachments }: { content: string; attachments: FileAttachment[] }) => {
+      return await api.post('/messages', { 
+        workspaceId, 
+        channelId, 
+        content,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
     },
-    onMutate: async (content: string) => {
+    onMutate: async ({ content, attachments }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['messages', workspaceId, channelId] });
 
@@ -79,6 +101,7 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
       const tempMessage: Message = {
         id: `temp-${Date.now()}`,
         content,
+        attachments: attachments.length > 0 ? attachments : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         user: {
@@ -92,20 +115,22 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
         return [...old, tempMessage];
       });
 
-      // Clear input immediately
+      // Clear input and attachments immediately
       setMessage('');
+      setAttachments([]);
 
       return { previousMessages, tempMessage };
     },
-    onError: (err, content, context) => {
+    onError: (err, variables, context) => {
       // Rollback on error
       if (context?.previousMessages) {
         queryClient.setQueryData(['messages', workspaceId, channelId], context.previousMessages);
       }
-      // Restore message in input
-      setMessage(content);
+      // Restore message and attachments in input
+      setMessage(variables.content);
+      setAttachments(variables.attachments);
     },
-    onSuccess: (response, content, context) => {
+    onSuccess: (response, variables, context) => {
       // Replace temp message with real message from server
       const realMessage = response.data;
       queryClient.setQueryData(['messages', workspaceId, channelId], (old: Message[] = []) => {
@@ -251,9 +276,10 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
   }, [messages]);
 
   const handleSend = () => {
-    if (message.trim() && channelId) {
+    if ((message.trim() || attachments.length > 0) && channelId) {
       const messageToSend = message;
-      sendMessageMutation.mutate(messageToSend);
+      const attachmentsToSend = [...attachments];
+      sendMessageMutation.mutate({ content: messageToSend, attachments: attachmentsToSend });
       if (socket) {
         socket.emit('typing-stop', { channelId, userName: user?.name });
       }
@@ -383,7 +409,10 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm break-words">{msg.content}</p>
+                      {msg.content && <p className="text-sm break-words">{msg.content}</p>}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <MessageAttachments attachments={msg.attachments} />
+                      )}
                       <div className="flex items-center justify-between gap-2 mt-1">
                         <span className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
                           {format(new Date(msg.createdAt), 'HH:mm')}
@@ -424,7 +453,37 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
 
       {/* Input */}
       <div className="border-t border-gray-200 p-4">
-        <div className="flex gap-2">
+        {attachments.length > 0 && (
+          <div className="mb-2 space-y-2">
+            {attachments.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200"
+              >
+                {file.mimeType.startsWith('image/') && (
+                  <img src={file.url} alt={file.fileName} className="w-12 h-12 object-cover rounded" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {file.fileName}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                  className="text-gray-400 hover:text-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2 items-center">
+          <FileUpload onFilesSelected={setAttachments} disabled={!channelId} />
           <input
             type="text"
             value={message}
@@ -435,7 +494,7 @@ export function WorkspaceChat({ workspaceId, channelId, channelName, channelType
           />
           <Button
             onClick={handleSend}
-            disabled={!message.trim()}
+            disabled={!message.trim() && attachments.length === 0}
           >
             <Send className="w-4 h-4" />
           </Button>
