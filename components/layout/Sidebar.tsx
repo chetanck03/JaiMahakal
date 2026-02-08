@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User, DollarSign } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, User, DollarSign, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/lib/stores/authStore';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   const links = [
     {
@@ -28,8 +36,8 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-4rem)] hidden md:block">
-      <nav className="p-4 space-y-2">
+    <aside className="w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] hidden md:flex md:flex-col fixed top-16 left-0 z-20">
+      <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.href || pathname.startsWith(link.href);
@@ -56,6 +64,17 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Logout Button */}
+      <div className="p-4 border-t border-gray-200 mt-auto">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-lg transition text-red-600 hover:bg-red-50 w-full"
+        >
+          <LogOut className="w-5 h-5" />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }

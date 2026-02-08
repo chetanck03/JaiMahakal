@@ -99,7 +99,7 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <BarChart3 className="w-6 h-6 text-blue-600" />
-            <h3 className="text-lg font-semibold">Task Status Distribution</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Task Status Distribution</h3>
           </div>
           {taskStatusData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -132,7 +132,7 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <TrendingUp className="w-6 h-6 text-green-600" />
-            <h3 className="text-lg font-semibold">Team Performance</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Team Performance</h3>
           </div>
           {teamPerformanceData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -156,11 +156,11 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
 
       {/* Progress Insights */}
       <Card>
-        <h3 className="text-lg font-semibold mb-4">Key Insights</h3>
+        <h3 className="text-lg font-semibold mb-4 text-gray-900">Key Insights</h3>
         <div className="space-y-3">
           {analytics.tasks.completionPercentage >= 70 && (
             <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium text-green-900">Great Progress!</p>
                 <p className="text-sm text-green-700">
@@ -172,7 +172,7 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
           
           {analytics.tasks.overdue > 0 && (
             <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium text-red-900">Attention Needed</p>
                 <p className="text-sm text-red-700">
@@ -184,7 +184,7 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
 
           {analytics.milestones.overdue > 0 && (
             <div className="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg">
-              <Target className="w-5 h-5 text-yellow-600 mt-0.5" />
+              <Target className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium text-yellow-900">Milestone Alert</p>
                 <p className="text-sm text-yellow-700">
@@ -196,11 +196,26 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
 
           {analytics.tasks.completionPercentage < 30 && analytics.tasks.total > 0 && (
             <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5" />
+              <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="font-medium text-blue-900">Getting Started</p>
                 <p className="text-sm text-blue-700">
                   Focus on completing high-priority tasks to build momentum for your team.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {analytics.tasks.completionPercentage >= 30 && 
+           analytics.tasks.completionPercentage < 70 && 
+           analytics.tasks.overdue === 0 && 
+           analytics.milestones.overdue === 0 && (
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-blue-900">Steady Progress</p>
+                <p className="text-sm text-blue-700">
+                  Your team is making good progress. Continue focusing on high-priority tasks to reach your goals.
                 </p>
               </div>
             </div>

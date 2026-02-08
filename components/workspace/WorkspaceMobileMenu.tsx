@@ -3,11 +3,25 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, LayoutDashboard, User, DollarSign, LogOut } from 'lucide-react';
+import { 
+  Menu, 
+  X, 
+  LayoutDashboard, 
+  CheckSquare, 
+  Target, 
+  MessageCircle, 
+  MessageSquare, 
+  BarChart3, 
+  Sparkles, 
+  FileText, 
+  Users,
+  ArrowLeft,
+  LogOut
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/stores/authStore';
 
-export function MobileMenu() {
+export function WorkspaceMobileMenu({ workspaceId }: { workspaceId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -20,22 +34,15 @@ export function MobileMenu() {
   };
 
   const links = [
-    {
-      href: '/dashboard',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-    },
-    {
-      href: '/profile',
-      label: 'Profile',
-      icon: User,
-    },
-    {
-      href: '/pricing',
-      label: 'Pricing',
-      icon: DollarSign,
-      badge: 'PRO',
-    },
+    { href: `/workspace/${workspaceId}`, label: 'Overview', icon: LayoutDashboard },
+    { href: `/workspace/${workspaceId}/tasks`, label: 'Tasks', icon: CheckSquare },
+    { href: `/workspace/${workspaceId}/milestones`, label: 'Milestones', icon: Target },
+    { href: `/workspace/${workspaceId}/team`, label: 'Team', icon: Users },
+    { href: `/workspace/${workspaceId}/chat`, label: 'Chat', icon: MessageCircle, badge: 'LIVE' },
+    { href: `/workspace/${workspaceId}/feedback`, label: 'Feedback', icon: MessageSquare },
+    { href: `/workspace/${workspaceId}/analytics`, label: 'Analytics', icon: BarChart3 },
+    { href: `/workspace/${workspaceId}/insights`, label: 'AI Insights', icon: Sparkles, badge: 'NEW' },
+    { href: `/workspace/${workspaceId}/pitch`, label: 'Pitch', icon: FileText, badge: 'BETA' },
   ];
 
   return (
@@ -77,9 +84,20 @@ export function MobileMenu() {
             </div>
 
             <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+              {/* Back to Home Button */}
+              <Link
+                href="/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg transition text-gray-700 hover:bg-gray-50 mb-4 border-b border-gray-200 pb-4"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Home
+              </Link>
+
+              {/* Workspace Navigation */}
               {links.map((link) => {
                 const Icon = link.icon;
-                const isActive = pathname === link.href || pathname.startsWith(link.href);
+                const isActive = pathname === link.href;
 
                 return (
                   <Link
@@ -96,7 +114,14 @@ export function MobileMenu() {
                     <Icon className="w-5 h-5" />
                     {link.label}
                     {link.badge && (
-                      <span className="ml-auto text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                      <span className={cn(
+                        'ml-auto text-xs px-2 py-0.5 rounded-full font-medium',
+                        link.badge === 'LIVE' 
+                          ? 'bg-green-100 text-green-700' 
+                          : link.badge === 'NEW'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-orange-100 text-orange-700'
+                      )}>
                         {link.badge}
                       </span>
                     )}

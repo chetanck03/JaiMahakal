@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { workspaceAPI } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
-import { Briefcase, CheckCircle, Target, TrendingUp } from 'lucide-react';
+import { Briefcase, CheckCircle, Target, Users } from 'lucide-react';
 
 export function QuickStats() {
   const { data: workspaces } = useQuery({
@@ -17,6 +17,9 @@ export function QuickStats() {
   const totalWorkspaces = workspaces?.length || 0;
   const totalTasks = workspaces?.reduce((sum: number, w: any) => sum + (w._count?.tasks || 0), 0) || 0;
   const totalMilestones = workspaces?.reduce((sum: number, w: any) => sum + (w._count?.milestones || 0), 0) || 0;
+  
+  // Calculate total team members across all workspaces
+  const totalMembers = workspaces?.reduce((sum: number, w: any) => sum + (w.members?.length || 0), 0) || 0;
 
   const stats = [
     {
@@ -41,9 +44,9 @@ export function QuickStats() {
       bgColor: 'bg-purple-50',
     },
     {
-      label: 'Progress',
-      value: '75%',
-      icon: TrendingUp,
+      label: 'Team Members',
+      value: totalMembers,
+      icon: Users,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },

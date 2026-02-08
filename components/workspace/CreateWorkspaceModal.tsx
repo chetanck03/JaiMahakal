@@ -13,6 +13,24 @@ interface CreateWorkspaceModalProps {
   onClose: () => void;
 }
 
+const INDUSTRY_OPTIONS = [
+  'SaaS',
+  'E-commerce',
+  'FinTech',
+  'HealthTech',
+  'EdTech',
+  'AI/ML',
+  'Blockchain',
+  'Gaming',
+  'Social Media',
+  'Marketplace',
+  'Enterprise Software',
+  'Mobile Apps',
+  'IoT',
+  'Cybersecurity',
+  'Other',
+];
+
 export function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspaceModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -53,17 +71,28 @@ export function CreateWorkspaceModal({ isOpen, onClose }: CreateWorkspaceModalPr
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Brief description of your startup..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             rows={3}
           />
         </div>
 
-        <Input
-          label="Industry"
-          value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-          placeholder="e.g., SaaS, E-commerce, FinTech"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Industry
+          </label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+          >
+            <option value="">Select an industry</option>
+            {INDUSTRY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex gap-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose} fullWidth>

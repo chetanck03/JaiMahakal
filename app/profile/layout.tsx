@@ -9,12 +9,10 @@ export default function ProfileLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-4 md:p-8 w-full overflow-x-hidden">
-          {children}
-        </main>
-      </div>
+      <Sidebar />
+      <main className="pt-24 px-4 pb-4 md:px-8 md:pb-8 md:ml-64">
+        {children}
+      </main>
     </div>
   );
 }
