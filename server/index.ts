@@ -14,6 +14,7 @@ import workspaceMembersRoutes from './routes/workspace-members.js';
 import messagesRoutes from './routes/messages.js';
 import channelsRoutes from './routes/channels.js';
 import uploadRoutes from './routes/upload.js';
+import aiRoutes from './routes/ai.js';
 
 dotenv.config();
 
@@ -77,6 +78,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/channels', channelsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Socket.io connection
 io.on('connection', (socket) => {

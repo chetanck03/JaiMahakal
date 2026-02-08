@@ -81,6 +81,14 @@ export const analyticsAPI = {
     api.get(`/analytics/workspace/${workspaceId}`),
 };
 
+// AI API
+export const aiAPI = {
+  generateInsights: (workspaceId: string) =>
+    api.post(`/ai/insights/${workspaceId}`),
+  generatePitch: (workspaceId: string) =>
+    api.post(`/ai/pitch/${workspaceId}`),
+};
+
 // Workspace Members API
 export const workspaceMembersAPI = {
   getMembers: (workspaceId: string) =>

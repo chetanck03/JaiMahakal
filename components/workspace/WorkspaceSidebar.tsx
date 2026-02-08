@@ -37,7 +37,6 @@ export function WorkspaceSidebar({ workspaceId }: { workspaceId: string }) {
     { href: `/workspace/${workspaceId}/feedback`, label: 'Feedback', icon: MessageSquare },
     { href: `/workspace/${workspaceId}/analytics`, label: 'Analytics', icon: BarChart3 },
     { href: `/workspace/${workspaceId}/insights`, label: 'AI Insights', icon: Sparkles, badge: 'NEW' },
-    { href: `/workspace/${workspaceId}/pitch`, label: 'Pitch', icon: FileText, badge: 'BETA' },
   ];
 
   return (

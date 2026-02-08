@@ -1,202 +1,136 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { analyticsAPI, taskAPI, milestoneAPI } from '@/lib/api';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { aiAPI } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
-import { Sparkles, TrendingUp, AlertTriangle, Target, Lightbulb, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Sparkles, TrendingUp, AlertTriangle, Target, Lightbulb, Zap, RefreshCw, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
 
 interface AIInsight {
   type: 'suggestion' | 'warning' | 'opportunity' | 'recommendation';
   title: string;
   description: string;
-  icon: any;
-  color: string;
-  bgColor: string;
 }
 
+const getInsightIcon = (type: string) => {
+  switch (type) {
+    case 'warning':
+      return AlertTriangle;
+    case 'opportunity':
+      return Zap;
+    case 'recommendation':
+      return Target;
+    default:
+      return Lightbulb;
+  }
+};
+
+const getInsightColors = (type: string) => {
+  switch (type) {
+    case 'warning':
+      return { color: 'text-red-600', bgColor: 'bg-red-50' };
+    case 'opportunity':
+      return { color: 'text-green-600', bgColor: 'bg-green-50' };
+    case 'recommendation':
+      return { color: 'text-purple-600', bgColor: 'bg-purple-50' };
+    default:
+      return { color: 'text-blue-600', bgColor: 'bg-blue-50' };
+  }
+};
+
 export function AIInsights({ workspaceId }: { workspaceId: string }) {
-  const { data: analytics } = useQuery({
-    queryKey: ['analytics', workspaceId],
-    queryFn: async () => {
-      const response = await analyticsAPI.getWorkspaceAnalytics(workspaceId);
-      return response.data;
+  const [insights, setInsights] = useState<AIInsight[]>([]);
+
+  const generateMutation = useMutation({
+    mutationFn: () => aiAPI.generateInsights(workspaceId),
+    onSuccess: (response) => {
+      setInsights(response.data.insights);
+    },
+    onError: (error: any) => {
+      console.error('Failed to generate insights:', error);
+      alert('Failed to generate AI insights. Please make sure GEMINI_API_KEY is set in your .env file.');
     },
   });
 
-  const { data: tasks } = useQuery({
-    queryKey: ['tasks', workspaceId],
-    queryFn: async () => {
-      const response = await taskAPI.getByWorkspace(workspaceId);
-      return response.data;
-    },
-  });
-
-  const { data: milestones } = useQuery({
-    queryKey: ['milestones', workspaceId],
-    queryFn: async () => {
-      const response = await milestoneAPI.getByWorkspace(workspaceId);
-      return response.data;
-    },
-  });
-
-  // Generate AI insights based on workspace data
-  const generateInsights = (): AIInsight[] => {
-    const insights: AIInsight[] = [];
-
-    if (!analytics) return insights;
-
-    // Task completion insights
-    if (analytics.tasks.completionPercentage < 50 && analytics.tasks.total > 5) {
-      insights.push({
-        type: 'suggestion',
-        title: 'Boost Task Completion',
-        description: 'Consider breaking down large tasks into smaller, manageable subtasks. This can increase completion rates by 40%.',
-        icon: TrendingUp,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
-      });
-    }
-
-    // Overdue task warning
-    if (analytics.tasks.overdue > 3) {
-      insights.push({
-        type: 'warning',
-        title: 'High Overdue Task Count',
-        description: `You have ${analytics.tasks.overdue} overdue tasks. Recommend scheduling a sprint planning session to reprioritize and redistribute workload.`,
-        icon: AlertTriangle,
-        color: 'text-red-600',
-        bgColor: 'bg-red-50',
-      });
-    }
-
-    // Milestone insights
-    if (milestones && milestones.length === 0) {
-      insights.push({
-        type: 'recommendation',
-        title: 'Set Your First Milestone',
-        description: 'Startups with clear milestones are 3x more likely to achieve their goals. Start with a 30-day milestone.',
-        icon: Target,
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50',
-      });
-    }
-
-    // Team productivity
-    if (analytics.team && analytics.team.length > 0) {
-      const avgTasksPerMember = analytics.tasks.total / analytics.team.length;
-      if (avgTasksPerMember > 10) {
-        insights.push({
-          type: 'warning',
-          title: 'Team Workload Alert',
-          description: `Average of ${avgTasksPerMember.toFixed(1)} tasks per member. Consider hiring or redistributing work to prevent burnout.`,
-          icon: AlertTriangle,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50',
-        });
-      }
-    }
-
-    // Growth opportunity
-    if (analytics.tasks.completionPercentage > 70) {
-      insights.push({
-        type: 'opportunity',
-        title: 'Ready for Scale',
-        description: 'Your team is performing well! Consider taking on more ambitious goals or expanding your product scope.',
-        icon: Zap,
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
-      });
-    }
-
-    // Task prioritization
-    if (tasks && tasks.length > 0) {
-      const highPriorityTasks = tasks.filter((t: any) => t.priority === 'high' && t.status !== 'done');
-      if (highPriorityTasks.length > 5) {
-        insights.push({
-          type: 'suggestion',
-          title: 'Too Many High-Priority Tasks',
-          description: `You have ${highPriorityTasks.length} high-priority tasks. Focus on 2-3 critical tasks per week for better execution.`,
-          icon: Lightbulb,
-          color: 'text-yellow-600',
-          bgColor: 'bg-yellow-50',
-        });
-      }
-    }
-
-    // Milestone deadline insights
-    if (analytics.milestones.overdue > 0) {
-      insights.push({
-        type: 'recommendation',
-        title: 'Milestone Timeline Review',
-        description: 'Some milestones are overdue. Consider adjusting timelines based on actual velocity or breaking them into smaller goals.',
-        icon: Target,
-        color: 'text-purple-600',
-        bgColor: 'bg-purple-50',
-      });
-    }
-
-    // Default insights if none generated
-    if (insights.length === 0) {
-      insights.push({
-        type: 'suggestion',
-        title: 'Build Momentum',
-        description: 'Start by creating 3-5 tasks for this week. Small wins build confidence and attract early users.',
-        icon: Sparkles,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50',
-      });
-      
-      insights.push({
-        type: 'recommendation',
-        title: 'Validate Early',
-        description: 'Create a feedback request to gather insights from potential users. Early validation saves months of development time.',
-        icon: Lightbulb,
-        color: 'text-green-600',
-        bgColor: 'bg-green-50',
-      });
-    }
-
-    return insights;
+  const handleGenerate = () => {
+    generateMutation.mutate();
   };
-
-  const insights = generateInsights();
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="w-6 h-6 text-purple-600" />
-        <h3 className="text-lg font-semibold text-gray-900">AI-Powered Insights</h3>
-        <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
-          BETA
-        </span>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-6 h-6 text-purple-600" />
+          <h3 className="text-lg font-semibold text-gray-900">AI-Powered Insights</h3>
+          <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full font-medium">
+            BETA
+          </span>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button 
+            onClick={handleGenerate} 
+            loading={generateMutation.isPending}
+            size="sm"
+            className="w-full sm:w-auto"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {insights.length > 0 ? 'Regenerate' : 'Generate Insights'}
+          </Button>
+          <Button 
+            onClick={() => window.open('https://sarthi-ai-crm-portal.netlify.app', '_blank')}
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Alternative AI Portal
+          </Button>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {insights.map((insight, index) => {
-          const Icon = insight.icon;
-          return (
-            <Card key={index} className={`${insight.bgColor} border-none`}>
-              <div className="flex items-start gap-3">
-                <div className={`p-2 bg-white rounded-lg`}>
-                  <Icon className={`w-5 h-5 ${insight.color}`} />
+      {insights.length === 0 && !generateMutation.isPending && (
+        <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-none">
+          <div className="text-center py-8">
+            <Sparkles className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">Get AI-Powered Insights</h4>
+            <p className="text-sm text-gray-700 mb-4">
+              Click "Generate Insights" to get personalized recommendations based on your workspace data.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {insights.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {insights.map((insight, index) => {
+            const Icon = getInsightIcon(insight.type);
+            const { color, bgColor } = getInsightColors(insight.type);
+            
+            return (
+              <Card key={index} className={`${bgColor} border-none`}>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-white rounded-lg flex-shrink-0">
+                    <Icon className={`w-5 h-5 ${color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`font-semibold ${color} mb-1 text-sm sm:text-base`}>{insight.title}</h4>
+                    <p className="text-xs sm:text-sm text-gray-700">{insight.description}</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className={`font-semibold ${insight.color} mb-1`}>{insight.title}</h4>
-                  <p className="text-sm text-gray-700">{insight.description}</p>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-none">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-purple-600 mt-0.5" />
+          <Sparkles className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm text-gray-700">
-              <span className="font-semibold">Pro Tip:</span> These insights are generated using AI analysis of your workspace data. 
-              They update in real-time as you make progress.
+            <p className="text-xs sm:text-sm text-gray-700">
+              <span className="font-semibold">Pro Tip:</span> These insights are generated using Google Gemini AI based on your workspace data. 
+              Click "Regenerate" to get fresh perspectives.
             </p>
           </div>
         </div>

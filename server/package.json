@@ -12,6 +12,7 @@
     "db:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.20.0",
     "bcrypt": "^5.1.1",
     "cloudinary": "^2.9.0",
