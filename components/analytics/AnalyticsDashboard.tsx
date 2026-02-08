@@ -47,13 +47,13 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm text-gray-600">Task Completion</h4>
+            <h4 className="text-sm font-medium text-gray-700">Task Completion</h4>
             <CheckCircle2 className="w-5 h-5 text-green-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">
             {analytics.tasks.completionPercentage.toFixed(0)}%
           </p>
           <p className="text-xs text-gray-500 mt-1">
@@ -63,19 +63,19 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
 
         <Card>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm text-gray-600">Overdue Tasks</h4>
+            <h4 className="text-sm font-medium text-gray-700">Overdue Tasks</h4>
             <AlertCircle className="w-5 h-5 text-red-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{analytics.tasks.overdue}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{analytics.tasks.overdue}</p>
           <p className="text-xs text-gray-500 mt-1">Require attention</p>
         </Card>
 
         <Card>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm text-gray-600">Milestones</h4>
+            <h4 className="text-sm font-medium text-gray-700">Milestones</h4>
             <Target className="w-5 h-5 text-purple-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">
             {analytics.milestones.achieved}/{analytics.milestones.total}
           </p>
           <p className="text-xs text-gray-500 mt-1">
@@ -85,16 +85,16 @@ export function AnalyticsDashboard({ workspaceId }: { workspaceId: string }) {
 
         <Card>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm text-gray-600">Team Members</h4>
+            <h4 className="text-sm font-medium text-gray-700">Team Members</h4>
             <Users className="w-5 h-5 text-blue-600" />
           </div>
-          <p className="text-3xl font-bold text-gray-900">{analytics.team?.length || 0}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{analytics.team?.length || 0}</p>
           <p className="text-xs text-gray-500 mt-1">Active contributors</p>
         </Card>
       </div>
 
       {/* Charts Row */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* Task Status Distribution */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
