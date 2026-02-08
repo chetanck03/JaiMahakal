@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Users, UserPlus, Link as LinkIcon, Copy, CheckCircle2, Crown, Trash2, Shield, Mail } from 'lucide-react';
+import { Users, UserPlus, Link as LinkIcon, Copy, CheckCircle2, Crown, Trash2, Mail } from 'lucide-react';
 import { api } from '@/lib/api';
 import { format } from 'date-fns';
 import { useAuthStore } from '@/lib/stores/authStore';
@@ -27,6 +27,7 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
   const { user: currentUser } = useAuthStore();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isEmailInviteModalOpen, setIsEmailInviteModalOpen] = useState(false);
+  const [deletingMember, setDeletingMember] = useState<Member | null>(null);
   const [inviteLink, setInviteLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [emailInvite, setEmailInvite] = useState({ email: '', message: '' });
@@ -65,6 +66,7 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspace-members', workspaceId] });
+      setDeletingMember(null);
     },
   });
 
@@ -82,14 +84,6 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
       alert(error.response?.data?.error?.message || 'Failed to send invitation');
     },
   });
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
-      return await api.put(`/workspace-members/${workspaceId}/members/${memberId}/role`, { role });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspace-members', workspaceId] });
-    },
-  });
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteLink);
@@ -98,8 +92,7 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
   };
 
   const isOwner = members.find((m: Member) => m.user.id === currentUser?.id)?.role === 'owner';
-  const isAdmin = members.find((m: Member) => m.user.id === currentUser?.id)?.role === 'admin';
-  const canInvite = isOwner || isAdmin; // Only owner and admin can invite
+  const canInvite = isOwner; // Only owner can invite
 
   // Debug logging
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -107,7 +100,6 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
   console.log('Current user:', currentUser?.id);
   console.log('Members:', members);
   console.log('Is owner:', isOwner);
-  console.log('Is admin:', isAdmin);
   console.log('Can invite:', canInvite);
   console.log('API Error:', error);
 
@@ -136,7 +128,7 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-blue-100 rounded-lg">
             <Users className="w-6 h-6 text-blue-600" />
@@ -147,14 +139,16 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
           </div>
         </div>
         {canInvite && (
-          <div className="flex gap-2">
-            <Button onClick={() => setIsEmailInviteModalOpen(true)} variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={() => setIsEmailInviteModalOpen(true)} variant="outline" className="w-full sm:w-auto">
               <Mail className="w-4 h-4 mr-2" />
-              Invite by Email
+              <span className="hidden sm:inline">Invite by Email</span>
+              <span className="sm:hidden">Email</span>
             </Button>
-            <Button onClick={() => generateInviteMutation.mutate()}>
+            <Button onClick={() => generateInviteMutation.mutate()} className="w-full sm:w-auto">
               <UserPlus className="w-4 h-4 mr-2" />
-              Get Invite Link
+              <span className="hidden sm:inline">Get Invite Link</span>
+              <span className="sm:hidden">Link</span>
             </Button>
           </div>
         )}
@@ -164,28 +158,22 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
       <div className="grid gap-4">
         {members.map((member: Member) => (
           <Card key={member.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-base sm:text-lg flex-shrink-0">
                   {member.user.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-gray-900">{member.user.name}</h4>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-gray-900 text-sm sm:text-base truncate">{member.user.name}</h4>
                     {member.role === 'owner' && (
-                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium">
+                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium whitespace-nowrap">
                         <Crown className="w-3 h-3" />
                         Owner
                       </span>
                     )}
-                    {member.role === 'admin' && (
-                      <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
-                        <Shield className="w-3 h-3" />
-                        Admin
-                      </span>
-                    )}
                   </div>
-                  <p className="text-sm text-gray-600">{member.user.email}</p>
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">{member.user.email}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Joined {format(new Date(member.joinedAt), 'MMM dd, yyyy')}
                   </p>
@@ -193,27 +181,15 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
               </div>
 
               {isOwner && member.role !== 'owner' && member.user.id !== currentUser?.id && (
-                <div className="flex items-center gap-2">
-                  <select
-                    value={member.role}
-                    onChange={(e) => updateRoleMutation.mutate({ memberId: member.id, role: e.target.value })}
-                    className="text-sm px-3 py-1 border border-gray-300 rounded-lg bg-white text-gray-700"
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      if (confirm(`Remove ${member.user.name} from workspace?`)) {
-                        removeMemberMutation.mutate(member.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDeletingMember(member)}
+                  disabled={removeMemberMutation.isPending}
+                  className="flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                </Button>
               )}
             </div>
           </Card>
@@ -341,6 +317,42 @@ export function TeamMembers({ workspaceId }: { workspaceId: string }) {
                 setIsEmailInviteModalOpen(false);
                 setEmailInvite({ email: '', message: '' });
               }}
+              fullWidth
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Member Confirmation Modal */}
+      <Modal
+        isOpen={!!deletingMember}
+        onClose={() => setDeletingMember(null)}
+        title="Remove Team Member"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            Are you sure you want to remove <strong>{deletingMember?.user.name}</strong> from this workspace? 
+            They will lose access to all workspace content and data.
+          </p>
+
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={() => {
+                if (deletingMember) {
+                  removeMemberMutation.mutate(deletingMember.id);
+                }
+              }}
+              loading={removeMemberMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+              fullWidth
+            >
+              Remove Member
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDeletingMember(null)}
               fullWidth
             >
               Cancel

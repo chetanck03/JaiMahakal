@@ -156,4 +156,105 @@ router.put('/:id/address', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
+// Update feedback request
+router.put('/request/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description } = req.body;
+
+    if (!title) {
+      return res.status(400).json({
+        error: { code: 'VALIDATION_ERROR', message: 'Title is required' },
+      });
+    }
+
+    // Check if user is owner of the workspace
+    const feedbackRequest = await prisma.feedbackRequest.findUnique({
+      where: { id },
+      include: {
+        workspace: {
+          include: {
+            members: {
+              where: {
+                userId: req.userId,
+                role: 'owner',
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!feedbackRequest) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Feedback request not found' },
+      });
+    }
+
+    if (feedbackRequest.workspace.members.length === 0) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Only workspace owner can update feedback requests' },
+      });
+    }
+
+    const updated = await prisma.feedbackRequest.update({
+      where: { id },
+      data: { title, description },
+      include: {
+        feedbacks: true,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update feedback request error:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update feedback request' } });
+  }
+});
+
+// Delete feedback request
+router.delete('/request/:id', authenticate, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is owner of the workspace
+    const feedbackRequest = await prisma.feedbackRequest.findUnique({
+      where: { id },
+      include: {
+        workspace: {
+          include: {
+            members: {
+              where: {
+                userId: req.userId,
+                role: 'owner',
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!feedbackRequest) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Feedback request not found' },
+      });
+    }
+
+    if (feedbackRequest.workspace.members.length === 0) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Only workspace owner can delete feedback requests' },
+      });
+    }
+
+    await prisma.feedbackRequest.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Feedback request deleted successfully' });
+  } catch (error) {
+    console.error('Delete feedback request error:', error);
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete feedback request' } });
+  }
+});
+
 export default router;

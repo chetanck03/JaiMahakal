@@ -64,6 +64,8 @@ export const milestoneAPI = {
 // Feedback API
 export const feedbackAPI = {
   createRequest: (data: any) => api.post('/feedback/request', data),
+  updateRequest: (id: string, data: any) => api.put(`/feedback/request/${id}`, data),
+  deleteRequest: (id: string) => api.delete(`/feedback/request/${id}`),
   submitFeedback: (shareableLink: string, data: any) =>
     api.post(`/feedback/submit/${shareableLink}`, data),
   getFeedbackRequest: (shareableLink: string) =>

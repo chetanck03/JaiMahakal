@@ -119,8 +119,26 @@ export function ChannelSidebar({
   const privateChannels = channels.filter((c: Channel) => c.type === 'private');
   const dmChannels = channels.filter((c: Channel) => c.type === 'dm');
 
+  // Deduplicate DM channels - keep only one DM per unique user pair
+  const uniqueDMChannels = dmChannels.reduce((acc: Channel[], channel: Channel) => {
+    const otherUserId = channel.members.find((m) => m.userId !== user?.id)?.userId;
+    if (otherUserId) {
+      // Check if we already have a DM with this user
+      const existingDM = acc.find((dm) => {
+        const existingOtherUserId = dm.members.find((m) => m.userId !== user?.id)?.userId;
+        return existingOtherUserId === otherUserId;
+      });
+      
+      // If no existing DM with this user, add it
+      if (!existingDM) {
+        acc.push(channel);
+      }
+    }
+    return acc;
+  }, []);
+
   // Get members not in DM yet
-  const dmUserIds = dmChannels.flatMap((c: Channel) => c.members.map((m) => m.userId));
+  const dmUserIds = uniqueDMChannels.flatMap((c: Channel) => c.members.map((m) => m.userId));
   const availableForDM = workspaceMembers.filter(
     (m: any) => m.userId !== user?.id && !dmUserIds.includes(m.userId)
   );
@@ -140,9 +158,9 @@ export function ChannelSidebar({
 
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Channels</h3>
+      <div className="p-3 sm:p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h3 className="text-sm sm:text-base font-semibold text-gray-900">Channels</h3>
           {canCreateChannel && (
             <Button size="sm" onClick={onCreateChannel}>
               <Plus className="w-4 h-4" />
@@ -151,7 +169,7 @@ export function ChannelSidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
         {/* Public Channels */}
         {publicChannels.length > 0 && (
           <div>
@@ -173,12 +191,12 @@ export function ChannelSidebar({
                     }`}
                   >
                     <div
-                      className="flex items-center gap-2 flex-1"
+                      className="flex items-center gap-2 flex-1 min-w-0"
                       onClick={() => isMemberOfChannel && onChannelSelect(channel.id)}
                     >
                       {getChannelIcon(channel.type)}
-                      <span className="text-sm font-medium">{channel.name}</span>
-                      <span className="text-xs text-gray-500">({channel.members.length})</span>
+                      <span className="text-xs sm:text-sm font-medium truncate">{channel.name}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">({channel.members.length})</span>
                     </div>
                     {!isMemberOfChannel ? (
                       <Button
@@ -186,13 +204,14 @@ export function ChannelSidebar({
                         variant="outline"
                         onClick={() => joinChannelMutation.mutate(channel.id)}
                         loading={joinChannelMutation.isPending}
+                        className="text-xs flex-shrink-0"
                       >
                         Join
                       </Button>
                     ) : canCreateChannel ? (
                       <button
                         onClick={() => deleteChannelMutation.mutate(channel.id)}
-                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700"
+                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-700 flex-shrink-0"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -224,10 +243,10 @@ export function ChannelSidebar({
                     }`}
                     onClick={() => onChannelSelect(channel.id)}
                   >
-                    <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       {getChannelIcon(channel.type)}
-                      <span className="text-sm font-medium">{channel.name}</span>
-                      <span className="text-xs text-gray-500">({channel.members.length})</span>
+                      <span className="text-xs sm:text-sm font-medium truncate">{channel.name}</span>
+                      <span className="text-xs text-gray-500 flex-shrink-0">({channel.members.length})</span>
                     </div>
                     {canCreateChannel && (
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100">
@@ -274,7 +293,7 @@ export function ChannelSidebar({
             </button>
           </div>
           <div className="space-y-1">
-            {dmChannels.map((channel: Channel) => {
+            {uniqueDMChannels.map((channel: Channel) => {
               const isActive = channel.id === activeChannelId;
               const displayName = getDMDisplayName(channel);
 
@@ -288,10 +307,10 @@ export function ChannelSidebar({
                   }`}
                   onClick={() => onChannelSelect(channel.id)}
                 >
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                     {displayName.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm font-medium">{displayName}</span>
+                  <span className="text-xs sm:text-sm font-medium truncate">{displayName}</span>
                 </div>
               );
             })}
@@ -306,10 +325,10 @@ export function ChannelSidebar({
                     className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-gray-200 text-gray-700"
                     onClick={() => createDMMutation.mutate(member.userId)}
                   >
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                       {member.user.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium">{member.user.name}</span>
+                    <span className="text-xs sm:text-sm font-medium truncate">{member.user.name}</span>
                   </div>
                 ))}
               </>

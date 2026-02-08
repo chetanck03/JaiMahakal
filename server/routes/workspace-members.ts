@@ -60,7 +60,7 @@ router.post('/:workspaceId/invite-email', authenticate, async (req: AuthRequest,
       where: {
         workspaceId,
         userId: req.userId,
-        role: { in: ['owner', 'admin'] },
+        role: 'owner',
       },
       include: {
         workspace: true,
@@ -70,7 +70,7 @@ router.post('/:workspaceId/invite-email', authenticate, async (req: AuthRequest,
 
     if (!member) {
       return res.status(403).json({
-        error: { code: 'FORBIDDEN', message: 'Only workspace owner or admin can send invitations' },
+        error: { code: 'FORBIDDEN', message: 'Only workspace owner can send invitations' },
       });
     }
 
@@ -255,7 +255,7 @@ router.put('/:workspaceId/members/:memberId/role', authenticate, async (req: Aut
 
     if (!['owner', 'member'].includes(role)) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'Invalid role' },
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid role. Must be owner or member' },
       });
     }
 

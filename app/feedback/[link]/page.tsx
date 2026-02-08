@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { MessageSquare, Star, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Star, CheckCircle2, Home } from 'lucide-react';
 import { feedbackAPI } from '@/lib/api';
 import { use } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function PublicFeedbackPage({ params }: { params: Promise<{ link: string }> }) {
   const { link } = use(params);
+  const router = useRouter();
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [content, setContent] = useState('');
@@ -19,6 +21,7 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
   const [loading, setLoading] = useState(false);
   const [feedbackRequest, setFeedbackRequest] = useState<any>(null);
   const [loadingRequest, setLoadingRequest] = useState(true);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     const fetchFeedbackRequest = async () => {
@@ -34,6 +37,18 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
 
     fetchFeedbackRequest();
   }, [link]);
+
+  // Countdown timer for redirect after submission
+  useEffect(() => {
+    if (submitted && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (submitted && countdown === 0) {
+      router.push('/');
+    }
+  }, [submitted, countdown, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,10 +95,25 @@ export default function PublicFeedbackPage({ params }: { params: Promise<{ link:
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
-          <p className="text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
+          <p className="text-sm sm:text-base text-gray-600 mb-6">
             Your feedback has been submitted successfully. We appreciate your input!
           </p>
+          
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">
+              Redirecting to home page in <span className="font-semibold text-blue-600">{countdown}</span> seconds...
+            </p>
+            
+            <Button 
+              onClick={() => router.push('/')}
+              fullWidth
+              className="flex items-center justify-center gap-2"
+            >
+              <Home className="w-4 h-4" />
+              Go to Home Now
+            </Button>
+          </div>
         </Card>
       </div>
     );

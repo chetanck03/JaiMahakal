@@ -27,6 +27,43 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
       });
     }
 
+    // For DM channels, check if one already exists between these users
+    if (type === 'dm' && memberIds && memberIds.length === 1) {
+      const otherUserId = memberIds[0];
+      const existingDM = await prisma.channel.findFirst({
+        where: {
+          workspaceId,
+          type: 'dm',
+          members: {
+            every: {
+              userId: { in: [req.userId!, otherUserId] }
+            }
+          }
+        },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                }
+              }
+            }
+          },
+          _count: {
+            select: { messages: true }
+          }
+        }
+      });
+
+      // If DM already exists, return it instead of creating a new one
+      if (existingDM && existingDM.members.length === 2) {
+        return res.status(200).json(existingDM);
+      }
+    }
+
     // Create channel
     const channel = await prisma.channel.create({
       data: {
